@@ -62,7 +62,7 @@
 ;;;;;;;; Grundelemente von Clojure ;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; def
-(def f (fn [x] x))
+(def s "Ein String")
 (def config {:width 1280, 
              :height 640 
              :background-color :black 
@@ -70,12 +70,12 @@
 
 ; if then else
 (if  (= 1 0) 
-  (println "Then Fall")
-  (println "Else Fall"))
+  (str "Then Fall")
+  (str "Else Fall"))
 
 (if  (= 1 1) 
-  (println "Then Fall")
-  (println "Else Fall"))
+  (str "Then Fall")
+  (str "Else Fall"))
 
 ; do Blockanweisung
 (do
@@ -123,7 +123,25 @@
   (try     
     (/ 1 0)     
     (catch Exception e (str "caught exception: " (.get_Message e))))
+
+  (try     
+    (throw (Exception. "Test von Throw"))
+    (catch Exception e (str "caught exception: " (.get_Message e))))
   )
+
+(defn check-point [[x y :as point]]
+  (let [good-message "Point is in Range"
+        bad-message "Point violates range"
+        bound-1 [0 0]
+        bound-2 [100 100]
+        [xmin ymin] bound-1
+        ;xmin (bound-1 0)
+        ;ymin (bound-1 0)
+        [xmax ymax] bound-2
+        ]
+    (if (and (>= x xmin) (>= y ymin) (<= x xmax) (<= y ymax))
+      good-message
+      bad-message)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;; Interop mit der CLR ;;;;;;;;;;;;;;;
@@ -190,6 +208,11 @@ DateAndTime/Now
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;; Higher Order Function (1) HOF ;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Range Checker
+(defn create-checker [min-range max-range]
+  (fn [x] (and (>= x min-range) (<= x max-range))))
+(def c0-100 (create-checker 0 100))
+
 ; 2 normale Funktionen
 (defn mal2 [x] (* 2 x))	
 (mal2 5) 		;25
@@ -378,10 +401,6 @@ DateAndTime/Now
 @creator
 @language
 
-(dosync
-  (ref-set creator "Rich Hickey")
-  (ref-set language "Clojure"))
-
 (defn set-language [c l]
   (dosync
     (ref-set creator c)
@@ -432,7 +451,7 @@ DateAndTime/Now
 
 (defn change-1 [value]
   (dosync
-    (println "Changer1=" value)
+    (@vprintln "Changer1=" value)
     (System.Threading.Thread/Sleep 100)
     (alter v conj value)))
 
@@ -460,11 +479,9 @@ DateAndTime/Now
 ; einfacher Account Record
 (defrecord Account [nr name ammount])
 
-; zwei Accounts
+; zwei Accounts und eine log Liste
 (def account1 (ref (Account. 1 "Thomas" 2000.0)))
 (def account2 (ref (Account. 2 "Paul" 1000.0)))
-
-; eine leere Liste für Logging Events
 (def account-logs (ref ()))
 
 ; Funktion setzt die Loglist wieder zurück
@@ -472,35 +489,17 @@ DateAndTime/Now
   (dosync
     (ref-set account-logs ())))
 
-(defn- base-transfer
+(defn transfer
   "Transferiert ammount von from nach to."
   [from to ammount]
-  (alter from update-in [:ammount] - ammount)
-  (alter to update-in [:ammount] + ammount))
+  (dosync  
+    (alter account-logs conj (str System.DateTime/Now " " ammount " " (:name @ from) "->" (:name @ to)))
+    (alter from update-in [:ammount] - ammount)
+    (alter to update-in [:ammount] + ammount)
+  ))
 
-(defn- base-transfer-log
-  "Protokoliert einen Transfer"
-  [from to ammount]
-  (alter account-logs conj (str System.DateTime/Now " " ammount " " (:name @ from) "->" (:name @ to))))
-
-(defn- create-safe-transfer [transfer-fn log-fn]
-  (fn [from to ammount]
-    (dosync
-      (transfer-fn from to ammount)
-      (log-fn from to ammount))))
-
-; konstruiert eine Transfer Metode
-(def transfer (create-safe-transfer base-transfer base-transfer-log))
 
 ; Hilfs Funktionen um das System auf Herz und Nieren zu testen
-(defn many-transfers-sleep
-  "Führt einen Transfer times mal aus.
-   Zwischen jeden Transfer wird sleep Milisekunden gewartet"
-  [from to ammount times sleep]
-  (dotimes [x times]
-    (System.Threading.Thread/Sleep sleep)
-    (transfer from to ammount)))
-
 (use 'clojure.pprint)
 
 (defn status [& accounts]
@@ -509,9 +508,17 @@ DateAndTime/Now
     (pprint (count @account-logs))
     (pprint accounts)))
 
-(status account1 account2)
+(status @account1 @account2)
 
-; transfer 100 dinger 10 mal und schläft 1000 milisekunden zwischen jeden transfer
+(defn many-transfers-sleep
+  "Führt einen Transfer times mal aus.
+   Zwischen jeden Transfer wird sleep Milisekunden gewartet"
+  [from to ammount times sleep]
+  (dotimes [x times]
+    (System.Threading.Thread/Sleep sleep)
+    (transfer from to ammount)))
+
+; transfer 100 euro 10 mal und schläft 1000 milisekunden zwischen jeden transfer
 (many-transfers-sleep account1 account2 100 10 1000)
 
 (do
