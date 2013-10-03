@@ -77,12 +77,13 @@
   (str "Then Fall")
   (str "Else Fall"))
 
-; do Blockanweisung
+;( do Blockanweisung
 (do
   (println "Erste Zeile")
   (println "Zweite Zeile")
   (println "Dritte Zeile")
-  (println "Vierte Zeile"))
+  (println "Vierte Zeile")
+  )
 
 ; let Binding
 (let [a 1,
@@ -124,6 +125,7 @@
     (/ 1 0)     
     (catch Exception e (str "caught exception: " (.get_Message e))))
 
+
   (try     
     (throw (Exception. "Test von Throw"))
     (catch Exception e (str "caught exception: " (.get_Message e))))
@@ -136,7 +138,7 @@
         bound-2 [100 100]
         [xmin ymin] bound-1
         ;xmin (bound-1 0)
-        ;ymin (bound-1 0)
+        ;ymin (bound-1 1)
         [xmax ymax] bound-2
         ]
     (if (and (>= x xmin) (>= y ymin) (<= x xmax) (<= y ymax))
@@ -161,12 +163,6 @@
 ;Classname/staticField
 String/Empty
 Math/PI
-
-;;Dot special form
-(. "Hallo" ToUpper)
-(. "Hallo" Length)
-(. "Hallo" (Replace "a" "e"))
-(. "Hallo" Replace "a" "e")
 
 ;;Instantiation
 (Uri. "http://www.google.de")
@@ -211,6 +207,7 @@ DateAndTime/Now
 ; Range Checker
 (defn create-checker [min-range max-range]
   (fn [x] (and (>= x min-range) (<= x max-range))))
+
 (def c0-100 (create-checker 0 100))
 
 ; 2 normale Funktionen
